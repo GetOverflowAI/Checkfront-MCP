@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "checkfront": {
+      "type": "stdio",
+      "command": "pnpm",
+      "args": ["start"],
+      "cwd": "/home/segfault255/git/Checkfront-MCP"
+    }
+  }
+}

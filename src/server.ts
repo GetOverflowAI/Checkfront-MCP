@@ -2,6 +2,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { config } from "./config.js";
 import { createCheckfrontClient } from "./checkfront/client.js";
 import { registerBookingTools } from "./tools/bookings.js";
+import { registerItemTools } from "./tools/items.js";
 
 export const server = new McpServer({
   name: "checkfront",
@@ -11,3 +12,4 @@ export const server = new McpServer({
 const client = createCheckfrontClient(config);
 
 registerBookingTools(server, client);
+registerItemTools(server, client);

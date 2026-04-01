@@ -48,6 +48,21 @@ export interface BookingResponse {
   booking: Booking;
 }
 
+export interface Item {
+  item_id: string;
+  name: string;
+  [key: string]: unknown;
+}
+
+export interface ItemResponse {
+  item: Item;
+}
+
+// Calendar: date string (YYYYMMDD) -> availability count (or 1 for public API)
+export interface ItemCalendarResponse {
+  "item/cal": Record<string, number>;
+}
+
 export interface CheckfrontError {
   error: {
     code: number;
