@@ -8,6 +8,6 @@ function requireEnv(name: string): string {
 
 export const config = {
   host: requireEnv("CHECKFRONT_HOST"),
-  token: requireEnv("CHECKFRONT_TOKEN"),
-  key: requireEnv("CHECKFRONT_KEY"),
+  apiKey: requireEnv("CHECKFRONT_API_KEY"),
+  apiSecret: requireEnv("CHECKFRONT_API_SECRET"),
 };

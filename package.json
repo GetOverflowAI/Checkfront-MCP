@@ -1,0 +1,22 @@
+{
+  "name": "checkfront-mcp",
+  "version": "0.1.0",
+  "description": "MCP server for the Checkfront booking platform",
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch --env-file=.env src/index.ts",
+    "start": "tsx --env-file=.env src/index.ts",
+    "typecheck": "tsc --noEmit",
+    "mcpInspect": "npx @modelcontextprotocol/inspector tsx --env-file=.env src/index.ts"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.10.2",
+    "zod": "^3.24.2"
+  },
+  "packageManager": "pnpm@10.7.1",
+  "devDependencies": {
+    "@types/node": "^22.13.14",
+    "tsx": "^4.19.3",
+    "typescript": "^5.8.2"
+  }
+}

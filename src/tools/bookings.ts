@@ -1,47 +1,61 @@
+import { appendFileSync } from "node:fs";
 import { z } from "zod";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { CheckfrontClient } from "../checkfront/client.js";
-import type {
-  BookingListResponse,
-  BookingResponse,
-} from "../checkfront/types.js";
+
+function log(msg: string) {
+  appendFileSync("/tmp/checkfront-mcp.log", `${new Date().toISOString()} ${msg}\n`);
+}
+import type { BookingListResponse, BookingResponse } from "../checkfront/types.js";
 
 export function registerBookingTools(
   server: McpServer,
   client: CheckfrontClient
 ): void {
-  server.tool(
+  server.registerTool(
     "list_bookings",
-    "List bookings from Checkfront with optional filters",
     {
-      status: z
-        .enum(["PENDING", "CONFIRMED", "CANCELLED", "REFUNDED", "FAILED"])
-        .optional()
-        .describe("Filter by booking status"),
-      start_date: z
-        .string()
-        .optional()
-        .describe("Filter bookings starting on or after this date (YYYYMMDD)"),
-      end_date: z
-        .string()
-        .optional()
-        .describe("Filter bookings ending on or before this date (YYYYMMDD)"),
-      page: z
-        .number()
-        .int()
-        .positive()
-        .optional()
-        .describe("Page number for pagination (default: 1)"),
+      description: "List bookings from Checkfront with optional filters",
+      inputSchema: {
+        status_id: z.string().optional().describe("Filter by booking status"),
+        customer_id: z.string().optional().describe("Filter by customer ID"),
+        customer_email: z.string().optional().describe("Filter by customer email"),
+        start_date: z
+          .string()
+          .optional()
+          .describe("Filter by booking start date. Accepts date strings or unix timestamps. Prefix with '<' or '>' to match before or after."),
+        end_date: z
+          .string()
+          .optional()
+          .describe("Filter by booking end date. Accepts date strings or unix timestamps. Prefix with '<' or '>' to match before or after."),
+        created_date: z
+          .string()
+          .optional()
+          .describe("Filter by booking creation date. Accepts date strings or unix timestamps. Prefix with '<' or '>' to match before or after."),
+        last_modified: z
+          .string()
+          .optional()
+          .describe("Filter by last modified date. Accepts date strings or unix timestamps. Prefix with '<' or '>' to match before or after."),
+        limit: z.number().int().positive().optional().describe("Number of bookings to return per page (default: 100)"),
+        page: z.number().int().positive().optional().describe("Page of results to return"),
+      },
     },
-    async ({ status, start_date, end_date, page }) => {
-      const params: Record<string, string> = {};
-      if (status) params["status"] = status;
-      if (start_date) params["start_date"] = start_date;
-      if (end_date) params["end_date"] = end_date;
-      if (page) params["page"] = String(page);
+    async ({ status_id, customer_id, customer_email, start_date, end_date, created_date, last_modified, limit, page }) => {
+      log(`list_bookings args: ${JSON.stringify({ status_id, customer_id, customer_email, start_date, end_date, created_date, last_modified, limit, page })}`);
+      const qs = new URLSearchParams();
+      if (status_id) qs.set("status_id", status_id);
+      if (customer_id) qs.set("customer_id", customer_id);
+      if (customer_email) qs.set("customer_email", customer_email);
+      if (start_date) qs.set("start_date", start_date);
+      if (end_date) qs.set("end_date", end_date);
+      if (created_date) qs.set("created_date", created_date);
+      if (last_modified) qs.set("last_modified", last_modified);
+      if (limit) qs.set("limit", String(limit));
+      if (page) qs.set("page", String(page));
+      const path = qs.size ? `booking?${qs}` : "booking";
 
-      const data = await client.get<BookingListResponse>("booking", params);
-      const bookings = Object.values(data.booking ?? {});
+      const data = await client.get<BookingListResponse>(path);
+      const bookings = data["booking/index"] ?? {};
 
       return {
         content: [
@@ -63,11 +77,13 @@ export function registerBookingTools(
     }
   );
 
-  server.tool(
+  server.registerTool(
     "get_booking",
-    "Retrieve a single booking by its ID",
     {
-      booking_id: z.string().describe("The Checkfront booking ID"),
+      description: "Retrieve a single booking by its ID",
+      inputSchema: {
+        booking_id: z.string().describe("The Checkfront booking ID"),
+      },
     },
     async ({ booking_id }) => {
       const data = await client.get<BookingResponse>(`booking/${booking_id}`);
@@ -77,69 +93,5 @@ export function registerBookingTools(
     }
   );
 
-  server.tool(
-    "create_booking",
-    "Create a new booking in Checkfront",
-    {
-      item_id: z.string().describe("The item/package ID to book"),
-      start_date: z.string().describe("Start date (YYYYMMDD)"),
-      end_date: z.string().describe("End date (YYYYMMDD)"),
-      qty: z.number().int().positive().describe("Number of units to book"),
-      customer_name: z.string().describe("Full name of the customer"),
-      customer_email: z.string().email().describe("Customer email address"),
-      customer_phone: z.string().optional().describe("Customer phone number"),
-      note: z.string().optional().describe("Internal note for the booking"),
-    },
-    async ({
-      item_id,
-      start_date,
-      end_date,
-      qty,
-      customer_name,
-      customer_email,
-      customer_phone,
-      note,
-    }) => {
-      const body: Record<string, unknown> = {
-        item_id,
-        start_date,
-        end_date,
-        qty,
-        customer: {
-          name: customer_name,
-          email: customer_email,
-          ...(customer_phone ? { phone: customer_phone } : {}),
-        },
-        ...(note ? { note } : {}),
-      };
 
-      const data = await client.post<BookingResponse>("booking", body);
-      return {
-        content: [{ type: "text", text: JSON.stringify(data.booking, null, 2) }],
-      };
-    }
-  );
-
-  server.tool(
-    "update_booking",
-    "Update an existing booking in Checkfront",
-    {
-      booking_id: z.string().describe("The Checkfront booking ID to update"),
-      status: z
-        .enum(["PENDING", "CONFIRMED", "CANCELLED"])
-        .optional()
-        .describe("New status for the booking"),
-      note: z.string().optional().describe("Updated internal note"),
-    },
-    async ({ booking_id, status, note }) => {
-      const body: Record<string, unknown> = {};
-      if (status) body["status"] = status;
-      if (note) body["note"] = note;
-
-      const data = await client.put<BookingResponse>(`booking/${booking_id}`, body);
-      return {
-        content: [{ type: "text", text: JSON.stringify(data.booking, null, 2) }],
-      };
-    }
-  );
 }

@@ -13,8 +13,9 @@ export interface BookingItem {
 }
 
 export interface Booking {
-  booking_id: string;
+  booking_id: number;
   code: string;
+  customer_id: string;
   status: BookingStatus;
   status_id: number;
   date: string;
@@ -40,7 +41,7 @@ export interface BookingListResponse {
     pages: number;
     page: number;
   };
-  booking: Record<string, Booking>;
+  "booking/index": Record<string, Booking>;
 }
 
 export interface BookingResponse {
